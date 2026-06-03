@@ -82,28 +82,11 @@ The `master` branch uses the `quarkus-rest` extension.
 There will also be a `resteasy` branch using the `quarkus-resteasy` extension,
 so the same reproducer can be compared between both REST implementations.
 
-## Useful Commands
+With `quarkus-resteasy`, the ambiguous route is reported at request time with a
+warning like this:
 
-Run tests:
+```text
+WARN  [org.jboss.resteasy.resteasy_jaxrs.i18n] (executor-thread-1) RESTEASY002142: Multiple resource methods match request "GET /api-path/v1/42". Selecting one. Matching methods: [public br.com.will.AmbiguousRouteResource$DTO br.com.will.AmbiguousRouteResource.getById(java.lang.Long), public java.util.List br.com.will.AmbiguousRouteResource.findOwnershipLineageByParentIdentifier(java.lang.Long)]
 
-```powershell
-.\mvnw test
-```
-
-Run dev mode:
-
-```powershell
-.\mvnw quarkus:dev
-```
-
-Package the application:
-
-```powershell
-.\mvnw package
-```
-
-Run the packaged application:
-
-```powershell
-java -jar target/quarkus-app/quarkus-run.jar
+INFO  [br.com.will.AmbiguousRouteResource] (executor-thread-1) Calling getById
 ```
