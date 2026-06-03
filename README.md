@@ -1,67 +1,102 @@
 # issue-54542
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+Minimal Quarkus reproducer for a REST route ambiguity where two resource methods
+have the same effective path pattern and both receive numeric path parameters.
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+The reproducer is in `src/main/java/br/com/will/AmbiguousRouteResource.java`:
 
-## Running the application in dev mode
+```java
+@GET
+@Path("v1/{parentId}")
+public List<DTO> findOwnershipLineageByParentIdentifier(@PathParam("parentId") Long parentId) {
+    Log.info("Calling findOwnershipLineageByParentIdentifier");
+    return List.of(new DTO(parentId, "findOwnershipLineageByParentIdentifier"));
+}
 
-You can run your application in dev mode that enables live coding using:
-
-```shell script
-./mvnw quarkus:dev
+@GET
+@Path("v1/{product}")
+public DTO getById(@PathParam("product") Long product) {
+    Log.info("Calling getById");
+    return new DTO(product, "getById");
+}
 ```
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
+Both methods resolve to `GET /api-path/v1/{number}`. Quarkus starts without a
+build-time error or warning, and requests are silently routed to only one method.
 
-## Packaging and running the application
+## Reproduce
 
-The application can be packaged using:
+Run the test:
 
-```shell script
-./mvnw package
+```powershell
+.\mvnw test
 ```
 
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
+On Unix-like shells:
 
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
-
-If you want to build an _über-jar_, execute the following command:
-
-```shell script
-./mvnw package -Dquarkus.package.jar.type=uber-jar
+```shell
+./mvnw test
 ```
 
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
+Or start Quarkus in dev mode:
 
-## Creating a native executable
-
-You can create a native executable using:
-
-```shell script
-./mvnw package -Dnative
+```powershell
+.\mvnw quarkus:dev
 ```
 
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
+Then call:
 
-```shell script
-./mvnw package -Dnative -Dquarkus.native.container-build=true
+```powershell
+curl http://localhost:8080/api-path/v1/1
+curl http://localhost:8080/api-path/v1/42
 ```
 
-You can then execute your native executable with: `./target/issue-54542-1.0.0-SNAPSHOT-runner`
+Actual behavior observed with Quarkus 3.36.0:
 
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
+```json
+{"id":1,"source":"getById"}
+{"id":42,"source":"getById"}
+```
 
-## Related Guides
+The logs also show only `getById` being called:
 
-- REST ([guide](https://quarkus.io/guides/rest)): Build RESTful web services and APIs using Jakarta REST (formerly JAX-RS)
-- REST Jackson ([guide](https://quarkus.io/guides/rest#json-serialisation)): Jackson serialization support for Quarkus REST. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it
+```text
+Calling getById
+Calling getById
+```
 
-## Provided Code
+`findOwnershipLineageByParentIdentifier` is never called for those requests, and
+there is no build-time diagnostic that the two methods are structurally
+identical.
 
-### REST
+## Expected diagnostic
 
-Easily start your REST Web Services
+Because `v1/{parentId}` and `v1/{product}` have the same path structure and both
+parameters are `Long`, the application should report the ambiguous resource
+mapping instead of selecting one method silently.
 
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
+## Useful Commands
+
+Run tests:
+
+```powershell
+.\mvnw test
+```
+
+Run dev mode:
+
+```powershell
+.\mvnw quarkus:dev
+```
+
+Package the application:
+
+```powershell
+.\mvnw package
+```
+
+Run the packaged application:
+
+```powershell
+java -jar target/quarkus-app/quarkus-run.jar
+```
