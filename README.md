@@ -75,6 +75,13 @@ Because `v1/{parentId}` and `v1/{product}` have the same path structure and both
 parameters are `Long`, the application should report the ambiguous resource
 mapping instead of selecting one method silently.
 
+## Branches
+
+The `master` branch uses the `quarkus-rest` extension.
+
+There will also be a `resteasy` branch using the `quarkus-resteasy` extension,
+so the same reproducer can be compared between both REST implementations.
+
 ## Useful Commands
 
 Run tests:
